@@ -721,6 +721,34 @@ public class XYBarRenderer extends AbstractXYItemRenderer
 
     }
 
+    private LegendItem getLegendItem(XYDataset dataset, int series){
+        String label = getLegendItemLabelGenerator().generateLabel(dataset, series);
+        String description = label;
+        String toolTipText = getToolTipeText(dataset, series);
+        String urlText = getUrlText(dataset, series);
+        Shape shape = this.legendBar;
+        Paint paint = lookupSeriesPaint(series);
+
+        if (this.drawBarOutline) {
+            return new LegendItem(label, description, toolTipText,
+                    urlText, shape, paint,
+                    lookupSeriesOutlineStroke(series),
+                    lookupSeriesOutlinePaint(series));
+        }
+
+        return new LegendItem(label, description, toolTipText, urlText,
+                    shape, paint);
+    }
+
+    private XYDataset getDataset(int datasetIndex){
+        XYPlot xyplot = getPlot();
+        if (xyplot == null) {
+            return null;
+        }
+        XYDataset dataset = xyplot.getDataset(datasetIndex);
+        return dataset;
+    }
+
     /**
      * Returns a default legend item for the specified series.  Subclasses
      * should override this method to generate customised items.
@@ -740,41 +768,10 @@ public class XYBarRenderer extends AbstractXYItemRenderer
         if (dataset == null) {
             return null;
         }
-        LegendItem result;
-        XYSeriesLabelGenerator lg = getLegendItemLabelGenerator();
-        String label = lg.generateLabel(dataset, series);
-        String description = label;
-        String toolTipText = null;
-        if (getLegendItemToolTipGenerator() != null) {
-            toolTipText = getLegendItemToolTipGenerator().generateLabel(
-                    dataset, series);
-        }
-        String urlText = null;
-        if (getLegendItemURLGenerator() != null) {
-            urlText = getLegendItemURLGenerator().generateLabel(dataset, 
-                    series);
-        }
-        Shape shape = this.legendBar;
-        Paint paint = lookupSeriesPaint(series);
-        Paint outlinePaint = lookupSeriesOutlinePaint(series);
-        Stroke outlineStroke = lookupSeriesOutlineStroke(series);
-        if (this.drawBarOutline) {
-            result = new LegendItem(label, description, toolTipText,
-                    urlText, shape, paint, outlineStroke, outlinePaint);
-        }
-        else {
-            result = new LegendItem(label, description, toolTipText, urlText, 
-                    shape, paint);
-        }
-        result.setLabelFont(lookupLegendTextFont(series));
-        Paint labelPaint = lookupLegendTextPaint(series);
-        if (labelPaint != null) {
-            result.setLabelPaint(labelPaint);
-        }
-        result.setDataset(dataset);
-        result.setDatasetIndex(datasetIndex);
-        result.setSeriesKey(dataset.getSeriesKey(series));
-        result.setSeriesIndex(series);
+
+        LegendItem result = getLegendItem(dataset, series);
+        setDefaultLegendItemInfo(result, dataset, datasetIndex, series);
+
         if (getGradientPaintTransformer() != null) {
             result.setFillPaintTransformer(getGradientPaintTransformer());
         }

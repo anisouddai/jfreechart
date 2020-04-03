@@ -737,6 +737,30 @@ public abstract class AbstractXYItemRenderer extends AbstractRenderer
         return result;
     }
 
+    protected String getUrlText(XYDataset dataset, int series){
+        return getLegendItemURLGenerator() != null
+                ? getLegendItemURLGenerator().generateLabel(dataset, series)
+                : null;
+    }
+    protected String getToolTipeText(XYDataset dataset, int series) {
+        return getLegendItemToolTipGenerator() != null
+                ? getLegendItemToolTipGenerator().generateLabel(dataset, series)
+                : null;
+    }
+
+    protected void setDefaultLegendItemInfo(LegendItem item, XYDataset dataset, int datasetIndex, int series){
+        item.setLabelFont(lookupLegendTextFont(series));
+        Paint labelPaint = lookupLegendTextPaint(series);
+        if (labelPaint != null) {
+            item.setLabelPaint(labelPaint);
+        }
+        item.setDataset(dataset);
+        item.setDatasetIndex(datasetIndex);
+        item.setSeriesKey(dataset.getSeriesKey(series));
+        item.setSeriesIndex(series);
+    }
+
+
     /**
      * Returns a default legend item for the specified series.  Subclasses
      * should override this method to generate customised items.
@@ -758,33 +782,17 @@ public abstract class AbstractXYItemRenderer extends AbstractRenderer
         }
         String label = this.legendItemLabelGenerator.generateLabel(dataset,
                 series);
-        String description = label;
-        String toolTipText = null;
-        if (getLegendItemToolTipGenerator() != null) {
-            toolTipText = getLegendItemToolTipGenerator().generateLabel(
-                    dataset, series);
-        }
-        String urlText = null;
-        if (getLegendItemURLGenerator() != null) {
-            urlText = getLegendItemURLGenerator().generateLabel(dataset,
-                    series);
-        }
-        Shape shape = lookupLegendShape(series);
+
         Paint paint = lookupSeriesPaint(series);
+
         LegendItem item = new LegendItem(label, paint);
-        item.setToolTipText(toolTipText);
-        item.setURLText(urlText);
-        item.setLabelFont(lookupLegendTextFont(series));
-        Paint labelPaint = lookupLegendTextPaint(series);
-        if (labelPaint != null) {
-            item.setLabelPaint(labelPaint);
-        }
-        item.setSeriesKey(dataset.getSeriesKey(series));
-        item.setSeriesIndex(series);
-        item.setDataset(dataset);
-        item.setDatasetIndex(datasetIndex);
+        item.setToolTipText(getToolTipeText(dataset, series));
+        item.setURLText(getUrlText(dataset, series));
+        setDefaultLegendItemInfo(item, dataset, datasetIndex, series);
 
         if (getTreatLegendShapeAsLine()) {
+            Shape shape = lookupLegendShape(series);
+
             item.setLineVisible(true);
             item.setLine(shape);
             item.setLinePaint(paint);

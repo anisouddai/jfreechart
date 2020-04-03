@@ -142,6 +142,8 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
     /** A flag that controls whether or not the box is filled. */
     private boolean fillBox;
 
+    private final double MAX_BOX_PERCENT = 0.1;
+
     /**
      * The paint used to draw various artifacts such as outliers, farout
      * symbol, average ellipse and median line.
@@ -354,6 +356,40 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
     }
 
     /**
+     * get the entityCollection
+     * setup for collecting optional entity info...
+     *
+     * @param info collects info about the drawing.
+     * @return entityCollection
+     */
+    private EntityCollection getEntities (PlotRenderingInfo info){
+        return info != null
+                ? info.getOwner().getEntityCollection()
+                : null;
+    }
+
+    private double getWidth(double exactBoxWidth, double maxBoxWidth){
+        if (exactBoxWidth < 3) {
+            return 3;
+        }
+        else if (exactBoxWidth > maxBoxWidth) {
+            return maxBoxWidth;
+        }
+
+        return exactBoxWidth;
+    }
+
+    private void drawBox(Graphics2D g2, Shape box, int series, int item){
+        if (this.fillBox) {
+            g2.setPaint(lookupBoxPaint(series, item));
+            g2.fill(box);
+        }
+        g2.setStroke(getItemOutlineStroke(series, item));
+        g2.setPaint(getItemOutlinePaint(series, item));
+        g2.draw(box);
+    }
+
+    /**
      * Draws the visual representation of a single data item.
      *
      * @param g2  the graphics device.
@@ -376,11 +412,7 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
             ValueAxis rangeAxis, XYDataset dataset, int series,
             int item, CrosshairState crosshairState, int pass) {
 
-        // setup for collecting optional entity info...
-        EntityCollection entities = null;
-        if (info != null) {
-            entities = info.getOwner().getEntityCollection();
-        }
+        EntityCollection entities = getEntities(info);
 
         BoxAndWhiskerXYDataset boxAndWhiskerData
                 = (BoxAndWhiskerXYDataset) dataset;
@@ -416,20 +448,11 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
         double exactBoxWidth = getBoxWidth();
         double width = exactBoxWidth;
         double dataAreaX = dataArea.getHeight();
-        double maxBoxPercent = 0.1;
-        double maxBoxWidth = dataAreaX * maxBoxPercent;
+        double maxBoxWidth = dataAreaX * MAX_BOX_PERCENT;
         if (exactBoxWidth <= 0.0) {
             int itemCount = boxAndWhiskerData.getItemCount(series);
             exactBoxWidth = dataAreaX / itemCount * 4.5 / 7;
-            if (exactBoxWidth < 3) {
-                width = 3;
-            }
-            else if (exactBoxWidth > maxBoxWidth) {
-                width = maxBoxWidth;
-            }
-            else {
-                width = exactBoxWidth;
-            }
+            width = getWidth(exactBoxWidth, maxBoxWidth);
         }
 
         g2.setPaint(getItemPaint(series, item));
@@ -456,13 +479,7 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
             box = new Rectangle2D.Double(yyQ3Median, xx - width / 2,
                     yyQ1Median - yyQ3Median, width);
         }
-        if (this.fillBox) {
-            g2.setPaint(lookupBoxPaint(series, item));
-            g2.fill(box);
-        }
-        g2.setStroke(getItemOutlineStroke(series, item));
-        g2.setPaint(getItemOutlinePaint(series, item));
-        g2.draw(box);
+        drawBox(g2, box, series, item);
 
         // draw median
         g2.setPaint(getArtifactPaint());
@@ -516,11 +533,7 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
             ValueAxis rangeAxis, XYDataset dataset, int series,
             int item, CrosshairState crosshairState, int pass) {
 
-        // setup for collecting optional entity info...
-        EntityCollection entities = null;
-        if (info != null) {
-            entities = info.getOwner().getEntityCollection();
-        }
+        EntityCollection entities = getEntities(info);
 
         BoxAndWhiskerXYDataset boxAndWhiskerData
             = (BoxAndWhiskerXYDataset) dataset;
@@ -563,20 +576,11 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
         double exactBoxWidth = getBoxWidth();
         double width = exactBoxWidth;
         double dataAreaX = dataArea.getMaxX() - dataArea.getMinX();
-        double maxBoxPercent = 0.1;
-        double maxBoxWidth = dataAreaX * maxBoxPercent;
+        double maxBoxWidth = dataAreaX * MAX_BOX_PERCENT;
         if (exactBoxWidth <= 0.0) {
             int itemCount = boxAndWhiskerData.getItemCount(series);
             exactBoxWidth = dataAreaX / itemCount * 4.5 / 7;
-            if (exactBoxWidth < 3) {
-                width = 3;
-            }
-            else if (exactBoxWidth > maxBoxWidth) {
-                width = maxBoxWidth;
-            }
-            else {
-                width = exactBoxWidth;
-            }
+            width = getWidth(exactBoxWidth, maxBoxWidth);
         }
 
         g2.setPaint(getItemPaint(series, item));
@@ -603,13 +607,7 @@ public class XYBoxAndWhiskerRenderer extends AbstractXYItemRenderer
             box = new Rectangle2D.Double(xx - width / 2, yyQ1Median, width,
                     yyQ3Median - yyQ1Median);
         }
-        if (this.fillBox) {
-            g2.setPaint(lookupBoxPaint(series, item));
-            g2.fill(box);
-        }
-        g2.setStroke(getItemOutlineStroke(series, item));
-        g2.setPaint(getItemOutlinePaint(series, item));
-        g2.draw(box);
+        drawBox(g2, box, series, item);
 
         // draw median
         g2.setPaint(getArtifactPaint());
