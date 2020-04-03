@@ -1024,6 +1024,85 @@ public class XYBarRenderer extends AbstractXYItemRenderer
         }
     }
 
+    private double getXAnchorPoint(ItemLabelAnchor anchor, Rectangle2D bar){
+        double offset = getItemLabelAnchorOffset();
+        switch (anchor) {
+            case OUTSIDE8:
+            case OUTSIDE9:
+            case OUTSIDE10:
+                return bar.getX() - offset;
+            case OUTSIDE7:
+            case OUTSIDE11:
+                return bar.getX();
+            case INSIDE7:
+            case INSIDE8:
+            case INSIDE9:
+            case INSIDE10:
+            case INSIDE11:
+                return bar.getX() + offset;
+            case CENTER:
+            case INSIDE6:
+            case INSIDE12:
+            case OUTSIDE6:
+            case OUTSIDE12:
+            default:
+                return bar.getCenterX();
+            case INSIDE1:
+            case INSIDE2:
+            case INSIDE3:
+            case INSIDE4:
+            case INSIDE5:
+                return bar.getMaxX() - offset;
+            case OUTSIDE1:
+            case OUTSIDE5:
+                return bar.getMaxX();
+            case OUTSIDE2:
+            case OUTSIDE3:
+            case OUTSIDE4:
+                return bar.getMaxX() + offset;
+        }
+    }
+
+    private double getYAnchorPoint(ItemLabelAnchor anchor, Rectangle2D bar) {
+        double offset = getItemLabelAnchorOffset();
+        switch (anchor) {
+            case OUTSIDE5:
+            case OUTSIDE6:
+            case OUTSIDE7:
+                return bar.getMaxY() + offset;
+            case OUTSIDE4: //y1
+            case OUTSIDE8:
+                return bar.getMaxY();
+            case INSIDE4:
+            case INSIDE5:
+            case INSIDE6://y2
+            case INSIDE7:
+            case INSIDE8:
+                return bar.getMaxY() - offset;
+            case CENTER: //y3
+            case INSIDE3:
+            case INSIDE9:
+            case OUTSIDE3:
+            case OUTSIDE9:
+            default:
+                return bar.getCenterY();
+            case INSIDE1:
+            case INSIDE2: //y4
+            case INSIDE10:
+            case INSIDE11:
+            case INSIDE12:
+                return bar.getMinY() + offset;
+            case OUTSIDE2://y5
+            case OUTSIDE10:
+                return bar.getMinY();
+            case OUTSIDE1:
+            case OUTSIDE11:
+            case OUTSIDE12://y6
+                return bar.getMinY() - offset;
+
+        }
+    }
+
     /**
      * Calculates the item label anchor point.
      *
@@ -1036,101 +1115,9 @@ public class XYBarRenderer extends AbstractXYItemRenderer
     private Point2D calculateLabelAnchorPoint(ItemLabelAnchor anchor,
             Rectangle2D bar, PlotOrientation orientation) {
 
-        Point2D result = null;
-        double offset = getItemLabelAnchorOffset();
-        double x0 = bar.getX() - offset;
-        double x1 = bar.getX();
-        double x2 = bar.getX() + offset;
-        double x3 = bar.getCenterX();
-        double x4 = bar.getMaxX() - offset;
-        double x5 = bar.getMaxX();
-        double x6 = bar.getMaxX() + offset;
-
-        double y0 = bar.getMaxY() + offset;
-        double y1 = bar.getMaxY();
-        double y2 = bar.getMaxY() - offset;
-        double y3 = bar.getCenterY();
-        double y4 = bar.getMinY() + offset;
-        double y5 = bar.getMinY();
-        double y6 = bar.getMinY() - offset;
-
-        if (anchor == ItemLabelAnchor.CENTER) {
-            result = new Point2D.Double(x3, y3);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE1) {
-            result = new Point2D.Double(x4, y4);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE2) {
-            result = new Point2D.Double(x4, y4);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE3) {
-            result = new Point2D.Double(x4, y3);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE4) {
-            result = new Point2D.Double(x4, y2);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE5) {
-            result = new Point2D.Double(x4, y2);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE6) {
-            result = new Point2D.Double(x3, y2);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE7) {
-            result = new Point2D.Double(x2, y2);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE8) {
-            result = new Point2D.Double(x2, y2);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE9) {
-            result = new Point2D.Double(x2, y3);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE10) {
-            result = new Point2D.Double(x2, y4);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE11) {
-            result = new Point2D.Double(x2, y4);
-        }
-        else if (anchor == ItemLabelAnchor.INSIDE12) {
-            result = new Point2D.Double(x3, y4);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE1) {
-            result = new Point2D.Double(x5, y6);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE2) {
-            result = new Point2D.Double(x6, y5);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE3) {
-            result = new Point2D.Double(x6, y3);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE4) {
-            result = new Point2D.Double(x6, y1);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE5) {
-            result = new Point2D.Double(x5, y0);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE6) {
-            result = new Point2D.Double(x3, y0);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE7) {
-            result = new Point2D.Double(x1, y0);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE8) {
-            result = new Point2D.Double(x0, y1);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE9) {
-            result = new Point2D.Double(x0, y3);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE10) {
-            result = new Point2D.Double(x0, y5);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE11) {
-            result = new Point2D.Double(x1, y6);
-        }
-        else if (anchor == ItemLabelAnchor.OUTSIDE12) {
-            result = new Point2D.Double(x3, y6);
-        }
-
-        return result;
+        return new Point2D.Double(
+                getXAnchorPoint(anchor, bar),
+                getYAnchorPoint(anchor, bar));
 
     }
 
