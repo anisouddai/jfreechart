@@ -124,6 +124,8 @@ import org.jfree.data.general.DatasetChangeEvent;
 import org.jfree.data.general.DatasetUtils;
 import org.jfree.data.xy.XYDataset;
 
+import static org.jfree.chart.renderer.xy.AxisName.Domain;
+
 /**
  * A general class for plotting data in the form of (x, y) pairs.  This plot can
  * use data from any class that implements the {@link XYDataset} interface.
@@ -2880,6 +2882,18 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         return new Rectangle(x0, y0, (x1 - x0), (y1 - y0));
     }
 
+    private void drawAnnotations(Graphics2D g2, Rectangle2D dataArea, List<Integer> rendererIndices, Layer layer,
+                                 PlotRenderingInfo info ){
+        for (int i : rendererIndices) {
+            XYItemRenderer renderer = getRenderer(i);
+            if (renderer != null) {
+                ValueAxis domainAxis = getDomainAxisForDataset(i);
+                ValueAxis rangeAxis = getRangeAxisForDataset(i);
+                renderer.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, layer, info);
+            }
+        }
+    }
+
     /**
      * Draws the plot within the specified area on a graphics device.
      *
@@ -3038,33 +3052,16 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         List<Integer> datasetIndices = getDatasetIndices(order);
 
         // draw background annotations
-        for (int i : rendererIndices) {
-            XYItemRenderer renderer = getRenderer(i);
-            if (renderer != null) {
-                ValueAxis domainAxis = getDomainAxisForDataset(i);
-                ValueAxis rangeAxis = getRangeAxisForDataset(i);
-                renderer.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, 
-                        Layer.BACKGROUND, info);
-            }
-        }
+        drawAnnotations(g2, dataArea, rendererIndices, Layer.BACKGROUND, info);
 
         // render data items...
         for (int datasetIndex : datasetIndices) {
-            XYDataset dataset = this.getDataset(datasetIndex);
-            foundData = render(g2, dataArea, datasetIndex, info, 
+            foundData = renderItem(g2, dataArea, datasetIndex, info,
                     crosshairState) || foundData;
         }
 
         // draw foreground annotations
-        for (int i : rendererIndices) {
-            XYItemRenderer renderer = getRenderer(i);
-            if (renderer != null) {
-                    ValueAxis domainAxis = getDomainAxisForDataset(i);
-                    ValueAxis rangeAxis = getRangeAxisForDataset(i);
-                renderer.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, 
-                            Layer.FOREGROUND, info);
-            }
-        }
+        drawAnnotations(g2, dataArea, rendererIndices, Layer.FOREGROUND, info);
 
         // draw domain crosshair if required...
         int datasetIndex = crosshairState.getDatasetIndex();
