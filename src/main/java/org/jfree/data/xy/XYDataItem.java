@@ -55,16 +55,20 @@ public class XYDataItem implements Cloneable, Comparable<XYDataItem>, Serializab
     /** The y-value. */
     private Number y;
 
+    private String shape;
+
     /**
      * Constructs a new data item.
      *
      * @param x  the x-value ({@code null} NOT permitted).
      * @param y  the y-value ({@code null} permitted).
+     * @param shape the shape-value ({@code null} permitted).
      */
-    public XYDataItem(Number x, Number y) {
+    public XYDataItem(Number x, Number y, String shape) {
         Args.nullNotPermitted(x, "x");
         this.x = x;
         this.y = y;
+        this.shape = shape;
     }
 
     /**
@@ -72,9 +76,10 @@ public class XYDataItem implements Cloneable, Comparable<XYDataItem>, Serializab
      *
      * @param x  the x-value.
      * @param y  the y-value.
+     * @param shape the shape-value.
      */
-    public XYDataItem(double x, double y) {
-        this(Double.valueOf(x), Double.valueOf(y));
+    public XYDataItem(double x, double y, String shape) {
+        this(Double.valueOf(x), Double.valueOf(y), shape);
     }
 
     /**
@@ -216,6 +221,9 @@ public class XYDataItem implements Cloneable, Comparable<XYDataItem>, Serializab
         if (!ObjectUtils.equal(this.y, that.y)) {
             return false;
         }
+        if(!this.shape.equals(that.shape)){
+            return false;
+        }
         return true;
     }
 
@@ -229,6 +237,7 @@ public class XYDataItem implements Cloneable, Comparable<XYDataItem>, Serializab
         int result;
         result = this.x.hashCode();
         result = 29 * result + (this.y != null ? this.y.hashCode() : 0);
+        result = 29 * result + (this.shape != null ? this.shape.hashCode() : 0);
         return result;
     }
 
