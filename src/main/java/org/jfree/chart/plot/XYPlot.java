@@ -2892,6 +2892,115 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         boolean b2 = (area.getHeight() <= MINIMUM_HEIGHT_TO_DRAW);
         return !b1 && !b2;
     }
+
+    private void drawCrosshair(AxisName axisName, Graphics2D g2, Rectangle2D dataArea, int datasetIndex,
+                                    CrosshairState crosshairState, Point2D anchor){
+        drawCrosshairWhenNotLockedOnData(axisName, datasetIndex, anchor, dataArea, crosshairState);
+        setCrosshairValue(axisName, crosshairState, false);
+
+        if (isCrosshairVisible(axisName)) {
+            drawCrosshairByAxisName(axisName, g2, dataArea, datasetIndex);
+        }
+    }
+
+    private void drawCrosshairByAxisName(AxisName axisName, Graphics2D g2, Rectangle2D dataArea, int datasetIndex){
+        if(axisName == Domain){
+            drawDomainCrosshair(g2, dataArea, getOrientation(), getCrosshairValue(axisName),
+                    getAxisForDataset(axisName, datasetIndex), getCrosshairStroke(axisName), getCrosshairPaint(axisName));
+        }else{
+            drawRangeCrosshair(g2, dataArea, getOrientation(), getCrosshairValue(axisName),
+                    getAxisForDataset(axisName, datasetIndex), getCrosshairStroke(axisName), getCrosshairPaint(axisName));
+        }
+    }
+
+    private void setCrosshairValue(AxisName axisName, CrosshairState crosshairState, boolean notify){
+        if(axisName == Domain){
+            setDomainCrosshairValue(crosshairState.getCrosshairX(), notify);
+        }else{
+            setRangeCrosshairValue(crosshairState.getCrosshairY(), notify);
+        }
+    }
+
+    private double getCrosshairValue(AxisName axisName){
+        return axisName == Domain
+                ? getDomainCrosshairValue()
+                : getRangeCrosshairValue();
+    }
+
+    private Paint getCrosshairPaint(AxisName axisName){
+        return axisName == Domain
+                ? getDomainCrosshairPaint()
+                : getRangeCrosshairPaint();
+    }
+
+    private Stroke getCrosshairStroke(AxisName axisName){
+        return axisName == Domain
+                ? getDomainCrosshairStroke()
+                : getRangeCrosshairStroke();
+    }
+
+    private boolean isCrosshairVisible(AxisName axisName){
+        return axisName == Domain
+                ? isDomainCrosshairVisible()
+                : isRangeCrosshairVisible();
+    }
+
+    private void drawCrosshairWhenNotLockedOnData(AxisName axisName, int datasetIndex, Point2D anchor,
+                                                  Rectangle2D dataArea, CrosshairState crosshairState){
+        ValueAxis axis = getAxisForDataset(axisName, datasetIndex);
+        RectangleEdge axisEdge = getAxisEdge(axisName, axis);
+        if (!getCrosshairLockedOnData(axisName) && anchor != null) {
+            setCrosshair(axisName,
+                    crosshairState,
+                    axis.java2DToValue(getAnchorByAxisNameByPlotOrientation(axisName, anchor), dataArea, axisEdge));
+        }
+    }
+
+    private void setCrosshair(AxisName axisName, CrosshairState crosshairState, double crosshair){
+        if(axisName == Domain){
+            crosshairState.setCrosshairX(crosshair);
+        }else{
+            crosshairState.setCrosshairY(crosshair);
+        }
+    }
+
+    private double getAnchorByAxisNameByPlotOrientation(AxisName axisName, Point2D anchor){
+        PlotOrientation orient = getOrientation();
+        if(axisName == Domain){
+            return orient == PlotOrientation.VERTICAL
+                    ? anchor.getX()
+                    : anchor.getY();
+        }else{
+            return orient == PlotOrientation.VERTICAL
+                    ? anchor.getY()
+                    : anchor.getX();
+        }
+    }
+
+    private RectangleEdge getAxisEdge(AxisName axisName, ValueAxis axis){
+        return axisName == Domain
+                ? getDomainAxisEdge(getDomainAxisIndex(axis))
+                : getRangeAxisEdge(getRangeAxisIndex(axis));
+    }
+
+    private ValueAxis getAxisForDataset(AxisName axisName, int datasetIndex){
+        return axisName == Domain
+                ? getDomainAxisForDataset(datasetIndex)
+                : getRangeAxisForDataset(datasetIndex);
+    }
+
+    private boolean getCrosshairLockedOnData(AxisName axisName){
+        return axisName == Domain
+                ? this.domainCrosshairLockedOnData
+                : this.rangeCrosshairLockedOnData;
+    }
+
+    private void drawCrosshairs(Graphics2D g2, Rectangle2D dataArea, CrosshairState crosshairState, Point2D anchor){
+        int datasetIndex = crosshairState.getDatasetIndex();
+        drawCrosshair(Domain, g2, dataArea, datasetIndex, crosshairState, anchor);
+        drawCrosshair(AxisName.Range, g2, dataArea, datasetIndex, crosshairState, anchor);
+    }
+
     private void drawAnnotations(Graphics2D g2, Rectangle2D dataArea, List<Integer> rendererIndices, Layer layer,
                                  PlotRenderingInfo info ){
         for (int i : rendererIndices) {
@@ -3069,47 +3178,9 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         // draw foreground annotations
         drawAnnotations(g2, dataArea, rendererIndices, Layer.FOREGROUND, info);
 
-        // draw domain crosshair if required...
-        int datasetIndex = crosshairState.getDatasetIndex();
-        ValueAxis xAxis = getDomainAxisForDataset(datasetIndex);
-        RectangleEdge xAxisEdge = getDomainAxisEdge(getDomainAxisIndex(xAxis));
-        if (!this.domainCrosshairLockedOnData && anchor != null) {
-            double xx;
-            if (orient == PlotOrientation.VERTICAL) {
-                xx = xAxis.java2DToValue(anchor.getX(), dataArea, xAxisEdge);
-            }
-            else {
-                xx = xAxis.java2DToValue(anchor.getY(), dataArea, xAxisEdge);
-            }
-            crosshairState.setCrosshairX(xx);
-        }
-        setDomainCrosshairValue(crosshairState.getCrosshairX(), false);
-        if (isDomainCrosshairVisible()) {
-            double x = getDomainCrosshairValue();
-            Paint paint = getDomainCrosshairPaint();
-            Stroke stroke = getDomainCrosshairStroke();
-            drawDomainCrosshair(g2, dataArea, orient, x, xAxis, stroke, paint);
-        }
+        // draw crosshair if required...
+        drawCrosshairs(g2, dataArea, crosshairState, anchor);
 
-        // draw range crosshair if required...
-        ValueAxis yAxis = getRangeAxisForDataset(datasetIndex);
-        RectangleEdge yAxisEdge = getRangeAxisEdge(getRangeAxisIndex(yAxis));
-        if (!this.rangeCrosshairLockedOnData && anchor != null) {
-            double yy;
-            if (orient == PlotOrientation.VERTICAL) {
-                yy = yAxis.java2DToValue(anchor.getY(), dataArea, yAxisEdge);
-            } else {
-                yy = yAxis.java2DToValue(anchor.getX(), dataArea, yAxisEdge);
-            }
-            crosshairState.setCrosshairY(yy);
-        }
-        setRangeCrosshairValue(crosshairState.getCrosshairY(), false);
-        if (isRangeCrosshairVisible()) {
-            double y = getRangeCrosshairValue();
-            Paint paint = getRangeCrosshairPaint();
-            Stroke stroke = getRangeCrosshairStroke();
-            drawRangeCrosshair(g2, dataArea, orient, y, yAxis, stroke, paint);
-        }
 
         if (!foundData) {
             drawNoDataMessage(g2, dataArea);
