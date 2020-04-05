@@ -103,6 +103,7 @@ import org.jfree.chart.event.RendererChangeEvent;
 import org.jfree.chart.event.RendererChangeListener;
 import org.jfree.chart.renderer.RendererUtils;
 import org.jfree.chart.renderer.xy.AbstractXYItemRenderer;
+import org.jfree.chart.renderer.xy.AxisName;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYItemRendererState;
 import org.jfree.chart.ui.Layer;
@@ -3755,15 +3756,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (index >= getDatasetCount()) {
             return;
         }
-        Collection markers = getDomainMarkers(index, layer);
-        ValueAxis axis = getDomainAxisForDataset(index);
-        if (markers != null && axis != null) {
-            Iterator iterator = markers.iterator();
-            while (iterator.hasNext()) {
-                Marker marker = (Marker) iterator.next();
-                r.drawDomainMarker(g2, this, axis, marker, dataArea);
-            }
-        }
+        drawMarkers(AxisName.Domain, g2, dataArea, getRangeMarkers(index, layer), getRangeAxisForDataset(index), r);
 
     }
 
@@ -3776,8 +3769,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
      * @param index  the renderer index.
      * @param layer  the layer (foreground or background).
      */
-    protected void drawRangeMarkers(Graphics2D g2, Rectangle2D dataArea,
-                                    int index, Layer layer) {
+    protected void drawRangeMarkers(Graphics2D g2, Rectangle2D dataArea, int index, Layer layer) {
 
         XYItemRenderer r = getRenderer(index);
         if (r == null) {
@@ -3788,15 +3780,31 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (index >= getDatasetCount()) {
             return;
         }
-        Collection markers = getRangeMarkers(index, layer);
-        ValueAxis axis = getRangeAxisForDataset(index);
+
+        drawMarkers(AxisName.Range, g2, dataArea, getRangeMarkers(index, layer), getRangeAxisForDataset(index), r);
+    }
+
+    /**
+     * Draws the markers (if any) for a renderer and layer.  This method
+     * is typically called from within the draw() method.
+     *
+     * @param axisName the axis name. Between Domain or Range
+     * @param g2  the graphics device.
+     * @param dataArea  the data area.
+     * @param markers  the collection of markers to draw.
+     * @param axis  the axis to draw for.
+     * @param renderer the renderer to use to draw markers
+     */
+    private void drawMarkers (AxisName axisName, Graphics2D g2, Rectangle2D dataArea, Collection markers, ValueAxis axis,
+                              XYItemRenderer renderer) {
         if (markers != null && axis != null) {
             Iterator iterator = markers.iterator();
             while (iterator.hasNext()) {
                 Marker marker = (Marker) iterator.next();
-                r.drawRangeMarker(g2, this, axis, marker, dataArea);
+                renderer.drawMarker(axisName, g2, this, axis, marker, dataArea);
             }
         }
+
     }
 
     /**

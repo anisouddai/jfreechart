@@ -100,6 +100,8 @@ import org.jfree.data.general.DatasetUtils;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYItemKey;
 
+import static org.jfree.chart.renderer.xy.AxisName.Domain;
+
 /**
  * A base class that can be used to create new {@link XYItemRenderer}
  * implementations.  
@@ -1126,6 +1128,15 @@ public abstract class AbstractXYItemRenderer extends AbstractRenderer
                         marker.getLabelTextAnchor());
             }
             g2.setComposite(originalComposite);
+        }
+    }
+
+    @Override
+    public void drawMarker(AxisName axisName, Graphics2D g2, XYPlot plot, ValueAxis axis, Marker marker, Rectangle2D dataArea) {
+        if(axisName == Domain){
+            drawDomainMarker(g2,plot, axis,marker, dataArea);
+        }else {
+            drawRangeMarker(g2,plot, axis,marker, dataArea);
         }
     }
 
