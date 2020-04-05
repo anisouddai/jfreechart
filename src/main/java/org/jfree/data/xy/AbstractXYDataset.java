@@ -43,6 +43,7 @@
 
 package org.jfree.data.xy;
 
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.data.DomainOrder;
 import org.jfree.data.general.AbstractSeriesDataset;
 
@@ -95,6 +96,24 @@ public abstract class AbstractXYDataset extends AbstractSeriesDataset
         Number y = getY(series, item);
         if (y != null) {
             result = y.doubleValue();
+        }
+        return result;
+    }
+
+    /**
+     * Returns the y-value (as a double primitive) for an item within a series.
+     *
+     * @param series  the series index (zero-based).
+     * @param item  the item index (zero-based).
+     *
+     * @return The value.
+     */
+    @Override
+    public String getShapeValue(int series, int item){
+        String result = null;
+        XYItemRenderer renderer = getShape(series, item);
+        if (renderer != null) {
+            result = renderer.getClass().getName();
         }
         return result;
     }

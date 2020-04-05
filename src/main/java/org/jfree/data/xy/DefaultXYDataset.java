@@ -46,6 +46,8 @@ package org.jfree.data.xy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.jfree.chart.renderer.xy.*;
 import org.jfree.chart.util.PublicCloneable;
 
 import org.jfree.data.DomainOrder;
@@ -74,12 +76,20 @@ public class DefaultXYDataset extends AbstractXYDataset
     private List seriesList;
 
     /**
+     * Storage for the series in the dataset.  We use a list because the
+     * order of the series is significant.  This list must be kept in sync
+     * with the seriesKeys list.
+     */
+    private List seriesShape;
+
+    /**
      * Creates a new {@code DefaultXYDataset} instance, initially
      * containing no data.
      */
     public DefaultXYDataset() {
         this.seriesKeys = new java.util.ArrayList();
         this.seriesList = new java.util.ArrayList();
+        this.seriesShape = new java.util.ArrayList();
     }
 
     /**
@@ -110,6 +120,7 @@ public class DefaultXYDataset extends AbstractXYDataset
         }
         return (Comparable) this.seriesKeys.get(series);
     }
+
 
     /**
      * Returns the index of the series with the specified key, or -1 if there
@@ -225,6 +236,89 @@ public class DefaultXYDataset extends AbstractXYDataset
     }
 
     /**
+     * Returns the shape-value.
+     *
+     * @param series  the series index (zero-based).
+     * @param item  the item index (zero-based).
+     *
+     * @return The shape-value.
+     */
+    @Override
+    public String getShapeValue(int series, int item) {
+        return ((String[]) this.seriesShape.get(series))[item];
+    }
+
+    /**
+     * Returns the shape-value (as a String) for an item within a
+     * series.
+     *
+     * @param series  the series (zero-based index).
+     * @param item  the item (zero-based index).
+     *
+     * @return The shape-value.
+     */
+    @Override
+    public XYItemRenderer getShape(int series, int item) {
+        switch (getShapeValue(series, item)){
+            case "CandlestickRenderer":
+                return new CandlestickRenderer();
+            case "ClusteredXYBarRenderer":
+                return new ClusteredXYBarRenderer();
+            case "CyclicXYItemRenderer":
+                return new CyclicXYItemRenderer();
+            case "DefaultXYItemRenderer":
+            default:
+                return new DefaultXYItemRenderer();
+            case "HighLowRenderer":
+                return new HighLowRenderer();
+            case "SamplingXYLineRenderer":
+                return new SamplingXYLineRenderer();
+            case "StackedXYAreaRenderer":
+                return new StackedXYAreaRenderer();
+            case "StackedXYAreaRenderer2":
+                return new StackedXYAreaRenderer2();
+            case "StackedXYBarRenderer":
+                return new StackedXYBarRenderer();
+            case "StandardXYItemRenderer":
+                return new StandardXYItemRenderer();
+            case "VectorRenderer":
+                return new VectorRenderer();
+            case "WindItemRenderer":
+                return new WindItemRenderer();
+            case "XYAreaRenderer":
+                return new XYAreaRenderer();
+            case "XYAreaRenderer2":
+                return new XYAreaRenderer2();
+            case "XYBarRenderer":
+                return new XYBarRenderer();
+            case "XYBlockRenderer":
+                return new XYBlockRenderer();
+            case "XYBoxAndWhiskerRenderer":
+                return new XYBoxAndWhiskerRenderer();
+            case "XYBubbleRenderer":
+                return new XYBubbleRenderer();
+            case "XYDifferenceRenderer":
+                return new XYDifferenceRenderer();
+            case "XYDotRenderer":
+                return new XYDotRenderer();
+            case "XYErrorRenderer":
+                return new XYErrorRenderer();
+            case "XYLineAndShapeRenderer":
+                return new XYLineAndShapeRenderer();
+            case "XYShapeRenderer":
+                return new XYShapeRenderer();
+            case "XYSplineRenderer":
+                return new XYSplineRenderer();
+            case "XYStepAreaRenderer":
+                return new XYStepAreaRenderer();
+            case "XYStepRenderer":
+                return new XYStepRenderer();
+            case "YIntervalRenderer":
+                return new YIntervalRenderer();
+        }
+    }
+
+    /**
      * Returns the y-value for an item within a series.
      *
      * @param series  the series index (in the range {@code 0} to
@@ -256,7 +350,7 @@ public class DefaultXYDataset extends AbstractXYDataset
      *     arrays of equal length, the first containing the x-values and the
      *     second containing the y-values).
      */
-    public void addSeries(Comparable seriesKey, double[][] data) {
+    public void addSeries(Comparable seriesKey, double[][] data, String shape) {
         if (seriesKey == null) {
             throw new IllegalArgumentException(
                     "The 'seriesKey' cannot be null.");
@@ -264,7 +358,7 @@ public class DefaultXYDataset extends AbstractXYDataset
         if (data == null) {
             throw new IllegalArgumentException("The 'data' is null.");
         }
-        if (data.length != 2) {
+        if (data.length != 3) {
             throw new IllegalArgumentException(
                     "The 'data' array must have length == 2.");
         }
@@ -276,10 +370,12 @@ public class DefaultXYDataset extends AbstractXYDataset
         if (seriesIndex == -1) {  // add a new series
             this.seriesKeys.add(seriesKey);
             this.seriesList.add(data);
+            this.seriesShape.add(shape);
         }
         else {  // replace an existing series
             this.seriesList.remove(seriesIndex);
             this.seriesList.add(seriesIndex, data);
+            this.seriesShape.add(seriesIndex, shape);
         }
         notifyListeners(new DatasetChangeEvent(this, this));
     }
@@ -296,6 +392,7 @@ public class DefaultXYDataset extends AbstractXYDataset
         if (seriesIndex >= 0) {
             this.seriesKeys.remove(seriesIndex);
             this.seriesList.remove(seriesIndex);
+            this.seriesShape.remove(seriesIndex);
             notifyListeners(new DatasetChangeEvent(this, this));
         }
     }
@@ -339,6 +436,14 @@ public class DefaultXYDataset extends AbstractXYDataset
             if (!Arrays.equals(d1y, d2y)) {
                 return false;
             }
+
+            String[][] s1 = (String[][]) this.seriesShape.get(i);
+            String[][] s2 = (String[][]) that.seriesShape.get(i);
+            String[] s1Shape = s1[2];
+            String[] s2Shape = s2[2];
+            if (!Arrays.equals(s1Shape, s2Shape)) {
+                return false;
+            }
         }
         return true;
     }
@@ -353,6 +458,7 @@ public class DefaultXYDataset extends AbstractXYDataset
         int result;
         result = this.seriesKeys.hashCode();
         result = 29 * result + this.seriesList.hashCode();
+        result = 31 * result + this.seriesShape.hashCode();
         return result;
     }
 
@@ -370,15 +476,20 @@ public class DefaultXYDataset extends AbstractXYDataset
         DefaultXYDataset clone = (DefaultXYDataset) super.clone();
         clone.seriesKeys = new java.util.ArrayList(this.seriesKeys);
         clone.seriesList = new ArrayList(this.seriesList.size());
+        clone.seriesShape = new ArrayList(this.seriesShape.size());
         for (int i = 0; i < this.seriesList.size(); i++) {
             double[][] data = (double[][]) this.seriesList.get(i);
             double[] x = data[0];
             double[] y = data[1];
+            String[] s = (String[]) this.seriesShape.get(i);
             double[] xx = new double[x.length];
             double[] yy = new double[y.length];
+            String[] ss = new String[s.length];
             System.arraycopy(x, 0, xx, 0, x.length);
             System.arraycopy(y, 0, yy, 0, y.length);
+            System.arraycopy(s, 0, ss, 0, s.length);
             clone.seriesList.add(i, new double[][] {xx, yy});
+            clone.seriesShape.add(i, ss);
         }
         return clone;
     }

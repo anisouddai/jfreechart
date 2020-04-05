@@ -47,6 +47,7 @@
 
 package org.jfree.data.xy;
 
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.data.DomainOrder;
 import org.jfree.data.general.SeriesDataset;
 
@@ -126,4 +127,25 @@ public interface XYDataset extends SeriesDataset {
      */
     public double getYValue(int series, int item);
 
+    /**
+     * Returns the shape-value (as a string primitive) for an item within a series.
+     *
+     * @param series  the series index (in the range {@code 0} to
+     *     {@code getSeriesCount() - 1}).
+     * @param item  the item index (in the range {@code 0} to
+     *     {@code getItemCount(series)}).
+     *
+     * @return The shape-name-value.
+     */
+    public String getShapeValue(int series, int item);
+
+    /**
+     * Returns the shape-value.
+     *
+     * @param series  the series index (zero-based).
+     * @param item  the item index (zero-based).
+     *
+     * @return The shape-value.
+     */
+    public XYItemRenderer getShape(int series, int item);
 }
