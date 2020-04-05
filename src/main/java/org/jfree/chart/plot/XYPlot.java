@@ -2882,6 +2882,16 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         return new Rectangle(x0, y0, (x1 - x0), (y1 - y0));
     }
 
+    /**
+     * Ensure the plot area is big enough to draw on.
+     * @param area the plot area (in Java2D space).
+     * @return if the plot is big enough
+     */
+    private boolean assertPlotIsBigEnough(Rectangle2D area){
+        boolean b1 = (area.getWidth() <= MINIMUM_WIDTH_TO_DRAW);
+        boolean b2 = (area.getHeight() <= MINIMUM_HEIGHT_TO_DRAW);
+        return !b1 && !b2;
+    }
     private void drawAnnotations(Graphics2D g2, Rectangle2D dataArea, List<Integer> rendererIndices, Layer layer,
                                  PlotRenderingInfo info ){
         for (int i : rendererIndices) {
@@ -2910,10 +2920,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
     public void draw(Graphics2D g2, Rectangle2D area, Point2D anchor,
             PlotState parentState, PlotRenderingInfo info) {
 
-        // if the plot area is too small, just return...
-        boolean b1 = (area.getWidth() <= MINIMUM_WIDTH_TO_DRAW);
-        boolean b2 = (area.getHeight() <= MINIMUM_HEIGHT_TO_DRAW);
-        if (b1 || b2) {
+        if (!assertPlotIsBigEnough(area)) {
             return;
         }
 
@@ -2942,7 +2949,6 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         // draw the plot background and axes...
         drawBackground(g2, dataArea);
         Map<Axis, AxisState> axisStateMap = drawAxes(g2, area, dataArea, info);
-
         PlotOrientation orient = getOrientation();
 
         // the anchor point is typically the point where the mouse last
