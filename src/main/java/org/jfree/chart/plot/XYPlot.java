@@ -4055,42 +4055,16 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
      * particular axis.
      *
      * @param axisIndex  the axis index ({@code null} not permitted).
+     * @param datasetToAxesMap the map of the dataset and axis
      *
      * @return A list of datasets.
      */
-    private List<XYDataset> getDatasetsMappedToDomainAxis(Integer axisIndex) {
+    private List<XYDataset> getDatasetsMappedToAxis(Integer axisIndex, Map<Integer, List<Integer>> datasetToAxesMap){
         Objects.requireNonNull(axisIndex, "axisIndex");
         List<XYDataset> result = new ArrayList<>();
         for (Entry<Integer, XYDataset> entry : this.datasets.entrySet()) {
             int index = entry.getKey();
-            List<Integer> mappedAxes = this.datasetToDomainAxesMap.get(index);
-            if (mappedAxes == null) {
-                if (axisIndex.equals(ZERO)) {
-                    result.add(entry.getValue());
-                }
-            } else {
-                if (mappedAxes.contains(axisIndex)) {
-                    result.add(entry.getValue());
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * A utility method that returns a list of datasets that are mapped to a
-     * particular axis.
-     *
-     * @param axisIndex  the axis index ({@code null} not permitted).
-     *
-     * @return A list of datasets.
-     */
-    private List<XYDataset> getDatasetsMappedToRangeAxis(Integer axisIndex) {
-        Objects.requireNonNull(axisIndex, "axisIndex");
-        List<XYDataset> result = new ArrayList<>();
-        for (Entry<Integer, XYDataset> entry : this.datasets.entrySet()) {
-            int index = entry.getKey();
-            List<Integer> mappedAxes = this.datasetToRangeAxesMap.get(index);
+            List<Integer> mappedAxes = datasetToAxesMap.get(index);
             if (mappedAxes == null) {
                 if (axisIndex.equals(ZERO)) {
                     result.add(entry.getValue());
@@ -4185,7 +4159,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         int domainIndex = getDomainAxisIndex(axis);
         if (domainIndex >= 0) {
             isDomainAxis = true;
-            mappedDatasets.addAll(getDatasetsMappedToDomainAxis(domainIndex));
+            mappedDatasets.addAll(getDatasetsMappedToAxis(domainIndex, this.datasetToDomainAxesMap));
             if (domainIndex == 0) {
                 // grab the plot's annotations
                 for (XYAnnotation annotation : this.annotations) {
@@ -4200,7 +4174,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         int rangeIndex = getRangeAxisIndex(axis);
         if (rangeIndex >= 0) {
             isDomainAxis = false;
-            mappedDatasets.addAll(getDatasetsMappedToRangeAxis(rangeIndex));
+            mappedDatasets.addAll(getDatasetsMappedToAxis(rangeIndex,this.datasetToRangeAxesMap));
             if (rangeIndex == 0) {
                 for (XYAnnotation annotation : this.annotations) {
                     if (annotation instanceof XYAnnotationBoundsInfo) {
