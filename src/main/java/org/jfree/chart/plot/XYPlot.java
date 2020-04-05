@@ -3535,7 +3535,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
      *
      * @return A flag that indicates whether any data was actually rendered.
      */
-    public boolean render(Graphics2D g2, Rectangle2D dataArea, int index,
+    public boolean renderItem(Graphics2D g2, Rectangle2D dataArea, int index,
             PlotRenderingInfo info, CrosshairState crosshairState) {
 
         XYDataset dataset = getDataset(index);
@@ -3563,7 +3563,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
             for (int pass = 0; pass < passCount; pass++) {
                 int seriesCount = dataset.getSeriesCount();
                 for (int series = seriesCount - 1; series >= 0; series--) {
-                    renderByOrder(true, g2, dataArea, info, crosshairState, state, xAxis, yAxis, series,
+                    renderItemByOrder(true, g2, dataArea, info, crosshairState, state, xAxis, yAxis, series,
                             pass, passCount, renderer, dataset);
                 }
             }
@@ -3573,7 +3573,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
             for (int pass = 0; pass < passCount; pass++) {
                 int seriesCount = dataset.getSeriesCount();
                 for (int series = 0; series < seriesCount; series++) {
-                    renderByOrder(false, g2, dataArea, info, crosshairState, state, xAxis, yAxis, series,
+                    renderItemByOrder(false, g2, dataArea, info, crosshairState, state, xAxis, yAxis, series,
                             pass, passCount, renderer, dataset);
                 }
             }
@@ -3588,7 +3588,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
                 : renderer;
     }
 
-    private boolean renderByOrder(boolean isReverseOrder, Graphics2D g2, Rectangle2D dataArea, PlotRenderingInfo info,
+    private boolean renderItemByOrder(boolean isReverseOrder, Graphics2D g2, Rectangle2D dataArea, PlotRenderingInfo info,
                                   CrosshairState crosshairState, XYItemRendererState state, ValueAxis xAxis,
                                   ValueAxis yAxis, int series, int pass, int passCount, XYItemRenderer renderer,
                                   XYDataset dataset){
@@ -3829,7 +3829,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (index >= getDatasetCount()) {
             return;
         }
-        drawMarkers(AxisName.Domain, g2, dataArea, getRangeMarkers(index, layer), getRangeAxisForDataset(index), r);
+        drawMarkers(Domain, g2, dataArea, getRangeMarkers(index, layer), getRangeAxisForDataset(index), r);
 
     }
 
