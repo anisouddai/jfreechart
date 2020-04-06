@@ -53,7 +53,12 @@
 
 package org.jfree.chart.plot;
 
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.renderer.xy.AxisName;
+
 import java.awt.geom.Point2D;
+
+import static org.jfree.chart.renderer.xy.AxisName.Domain;
 
 /**
  * Maintains state information about crosshairs on a plot between successive
@@ -103,6 +108,11 @@ public class CrosshairState {
      */
     public CrosshairState() {
         this(false);
+    }
+
+    public CrosshairState(double distance, Point2D anchor){
+        this.distance = distance;
+        this.anchor = anchor;
     }
 
     /**

@@ -81,6 +81,8 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+
 import org.jfree.chart.JFreeChart;
 
 import org.jfree.chart.LegendItem;
@@ -103,6 +105,7 @@ import org.jfree.chart.event.RendererChangeEvent;
 import org.jfree.chart.event.RendererChangeListener;
 import org.jfree.chart.renderer.RendererUtils;
 import org.jfree.chart.renderer.xy.AbstractXYItemRenderer;
+import org.jfree.chart.renderer.xy.AxisName;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYItemRendererState;
 import org.jfree.chart.ui.Layer;
@@ -120,6 +123,8 @@ import org.jfree.data.Range;
 import org.jfree.data.general.DatasetChangeEvent;
 import org.jfree.data.general.DatasetUtils;
 import org.jfree.data.xy.XYDataset;
+
+import static org.jfree.chart.renderer.xy.AxisName.Domain;
 
 /**
  * A general class for plotting data in the form of (x, y) pairs.  This plot can
@@ -2878,6 +2883,162 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
     }
 
     /**
+     * Ensure the plot area is big enough to draw on.
+     * @param area the plot area (in Java2D space).
+     * @return if the plot is big enough
+     */
+    private boolean assertPlotIsBigEnough(Rectangle2D area){
+        boolean b1 = (area.getWidth() <= MINIMUM_WIDTH_TO_DRAW);
+        boolean b2 = (area.getHeight() <= MINIMUM_HEIGHT_TO_DRAW);
+        return !b1 && !b2;
+    }
+
+    private void drawCrosshair(AxisName axisName, Graphics2D g2, Rectangle2D dataArea, int datasetIndex,
+                                    CrosshairState crosshairState, Point2D anchor){
+        drawCrosshairWhenNotLockedOnData(axisName, datasetIndex, anchor, dataArea, crosshairState);
+        setCrosshairValue(axisName, crosshairState, false);
+
+        if (isCrosshairVisible(axisName)) {
+            drawCrosshairByAxisName(axisName, g2, dataArea, datasetIndex);
+        }
+    }
+
+    private void drawCrosshairByAxisName(AxisName axisName, Graphics2D g2, Rectangle2D dataArea, int datasetIndex){
+        if(axisName == Domain){
+            drawDomainCrosshair(g2, dataArea, getOrientation(), getCrosshairValue(axisName),
+                    getAxisForDataset(axisName, datasetIndex), getCrosshairStroke(axisName), getCrosshairPaint(axisName));
+        }else{
+            drawRangeCrosshair(g2, dataArea, getOrientation(), getCrosshairValue(axisName),
+                    getAxisForDataset(axisName, datasetIndex), getCrosshairStroke(axisName), getCrosshairPaint(axisName));
+        }
+    }
+
+    private void setCrosshairValue(AxisName axisName, CrosshairState crosshairState, boolean notify){
+        if(axisName == Domain){
+            setDomainCrosshairValue(crosshairState.getCrosshairX(), notify);
+        }else{
+            setRangeCrosshairValue(crosshairState.getCrosshairY(), notify);
+        }
+    }
+
+    private double getCrosshairValue(AxisName axisName){
+        return axisName == Domain
+                ? getDomainCrosshairValue()
+                : getRangeCrosshairValue();
+    }
+
+    private Paint getCrosshairPaint(AxisName axisName){
+        return axisName == Domain
+                ? getDomainCrosshairPaint()
+                : getRangeCrosshairPaint();
+    }
+
+    private Stroke getCrosshairStroke(AxisName axisName){
+        return axisName == Domain
+                ? getDomainCrosshairStroke()
+                : getRangeCrosshairStroke();
+    }
+
+    private boolean isCrosshairVisible(AxisName axisName){
+        return axisName == Domain
+                ? isDomainCrosshairVisible()
+                : isRangeCrosshairVisible();
+    }
+
+    private void drawCrosshairWhenNotLockedOnData(AxisName axisName, int datasetIndex, Point2D anchor,
+                                                  Rectangle2D dataArea, CrosshairState crosshairState){
+        ValueAxis axis = getAxisForDataset(axisName, datasetIndex);
+        RectangleEdge axisEdge = getAxisEdge(axisName, axis);
+        if (!getCrosshairLockedOnData(axisName) && anchor != null) {
+            setCrosshair(axisName,
+                    crosshairState,
+                    axis.java2DToValue(getAnchorByAxisNameByPlotOrientation(axisName, anchor), dataArea, axisEdge));
+        }
+    }
+
+    private void setCrosshair(AxisName axisName, CrosshairState crosshairState, double crosshair){
+        if(axisName == Domain){
+            crosshairState.setCrosshairX(crosshair);
+        }else{
+            crosshairState.setCrosshairY(crosshair);
+        }
+    }
+
+    private double getAnchorByAxisNameByPlotOrientation(AxisName axisName, Point2D anchor){
+        PlotOrientation orient = getOrientation();
+        if(axisName == Domain){
+            return orient == PlotOrientation.VERTICAL
+                    ? anchor.getX()
+                    : anchor.getY();
+        }else{
+            return orient == PlotOrientation.VERTICAL
+                    ? anchor.getY()
+                    : anchor.getX();
+        }
+    }
+
+    private RectangleEdge getAxisEdge(AxisName axisName, ValueAxis axis){
+        return axisName == Domain
+                ? getDomainAxisEdge(getDomainAxisIndex(axis))
+                : getRangeAxisEdge(getRangeAxisIndex(axis));
+    }
+
+    private ValueAxis getAxisForDataset(AxisName axisName, int datasetIndex){
+        return axisName == Domain
+                ? getDomainAxisForDataset(datasetIndex)
+                : getRangeAxisForDataset(datasetIndex);
+    }
+
+    private boolean getCrosshairLockedOnData(AxisName axisName){
+        return axisName == Domain
+                ? this.domainCrosshairLockedOnData
+                : this.rangeCrosshairLockedOnData;
+    }
+
+    private void drawCrosshairs(Graphics2D g2, Rectangle2D dataArea, CrosshairState crosshairState, Point2D anchor){
+        int datasetIndex = crosshairState.getDatasetIndex();
+        drawCrosshair(Domain, g2, dataArea, datasetIndex, crosshairState, anchor);
+        drawCrosshair(AxisName.Range, g2, dataArea, datasetIndex, crosshairState, anchor);
+    }
+
+    private void drawAnnotations(Graphics2D g2, Rectangle2D dataArea, List<Integer> rendererIndices, Layer layer,
+                                 PlotRenderingInfo info ){
+        for (int i : rendererIndices) {
+            XYItemRenderer renderer = getRenderer(i);
+            if (renderer != null) {
+                ValueAxis domainAxis = getDomainAxisForDataset(i);
+                ValueAxis rangeAxis = getRangeAxisForDataset(i);
+                renderer.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, layer, info);
+            }
+        }
+    }
+
+    private CrosshairState getCrosshairStateSetted(Rectangle2D dataArea, Point2D anchor){
+        PlotOrientation orient = getOrientation();
+        CrosshairState crosshairState = new CrosshairState(Double.POSITIVE_INFINITY, anchor);
+
+        crosshairState.setAnchorX(Double.NaN);
+        crosshairState.setAnchorY(Double.NaN);
+        if (anchor != null) {
+            ValueAxis domainAxis = getDomainAxis();
+            if (domainAxis != null) {
+                crosshairState.setAnchorX(getAnchorByAxisNameByPlotOrientation(Domain, anchor));
+            }
+            ValueAxis rangeAxis = getRangeAxis();
+            if (rangeAxis != null) {
+                crosshairState.setAnchorY((getAnchorByAxisNameByPlotOrientation(AxisName.Range, anchor)));
+            }
+        }
+        crosshairState.setCrosshairX(getDomainCrosshairValue());
+        crosshairState.setCrosshairY(getRangeCrosshairValue());
+        return crosshairState;
+    }
+
+    private void drawAxisLines(){
+
+    }
+
+    /**
      * Draws the plot within the specified area on a graphics device.
      *
      * @param g2  the graphics device.
@@ -2893,10 +3054,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
     public void draw(Graphics2D g2, Rectangle2D area, Point2D anchor,
             PlotState parentState, PlotRenderingInfo info) {
 
-        // if the plot area is too small, just return...
-        boolean b1 = (area.getWidth() <= MINIMUM_WIDTH_TO_DRAW);
-        boolean b2 = (area.getHeight() <= MINIMUM_HEIGHT_TO_DRAW);
-        if (b1 || b2) {
+        if (!assertPlotIsBigEnough(area)) {
             return;
         }
 
@@ -2925,7 +3083,6 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         // draw the plot background and axes...
         drawBackground(g2, dataArea);
         Map<Axis, AxisState> axisStateMap = drawAxes(g2, area, dataArea, info);
-
         PlotOrientation orient = getOrientation();
 
         // the anchor point is typically the point where the mouse last
@@ -2933,42 +3090,9 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (anchor != null && !dataArea.contains(anchor)) {
             anchor = null;
         }
-        CrosshairState crosshairState = new CrosshairState();
-        crosshairState.setCrosshairDistance(Double.POSITIVE_INFINITY);
-        crosshairState.setAnchor(anchor);
 
-        crosshairState.setAnchorX(Double.NaN);
-        crosshairState.setAnchorY(Double.NaN);
-        if (anchor != null) {
-            ValueAxis domainAxis = getDomainAxis();
-            if (domainAxis != null) {
-                double x;
-                if (orient == PlotOrientation.VERTICAL) {
-                    x = domainAxis.java2DToValue(anchor.getX(), dataArea,
-                            getDomainAxisEdge());
-                }
-                else {
-                    x = domainAxis.java2DToValue(anchor.getY(), dataArea,
-                            getDomainAxisEdge());
-                }
-                crosshairState.setAnchorX(x);
-            }
-            ValueAxis rangeAxis = getRangeAxis();
-            if (rangeAxis != null) {
-                double y;
-                if (orient == PlotOrientation.VERTICAL) {
-                    y = rangeAxis.java2DToValue(anchor.getY(), dataArea,
-                            getRangeAxisEdge());
-                }
-                else {
-                    y = rangeAxis.java2DToValue(anchor.getX(), dataArea,
-                            getRangeAxisEdge());
-                }
-                crosshairState.setAnchorY(y);
-            }
-        }
-        crosshairState.setCrosshairX(getDomainCrosshairValue());
-        crosshairState.setCrosshairY(getRangeCrosshairValue());
+        CrosshairState crosshairState = getCrosshairStateSetted(dataArea, anchor);
+
         Shape originalClip = g2.getClip();
         Composite originalComposite = g2.getComposite();
 
@@ -3035,75 +3159,20 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         List<Integer> datasetIndices = getDatasetIndices(order);
 
         // draw background annotations
-        for (int i : rendererIndices) {
-            XYItemRenderer renderer = getRenderer(i);
-            if (renderer != null) {
-                ValueAxis domainAxis = getDomainAxisForDataset(i);
-                ValueAxis rangeAxis = getRangeAxisForDataset(i);
-                renderer.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, 
-                        Layer.BACKGROUND, info);
-            }
-        }
+        drawAnnotations(g2, dataArea, rendererIndices, Layer.BACKGROUND, info);
 
         // render data items...
         for (int datasetIndex : datasetIndices) {
-            XYDataset dataset = this.getDataset(datasetIndex);
-            foundData = render(g2, dataArea, datasetIndex, info, 
+            foundData = renderItem(g2, dataArea, datasetIndex, info,
                     crosshairState) || foundData;
         }
 
         // draw foreground annotations
-        for (int i : rendererIndices) {
-            XYItemRenderer renderer = getRenderer(i);
-            if (renderer != null) {
-                    ValueAxis domainAxis = getDomainAxisForDataset(i);
-                    ValueAxis rangeAxis = getRangeAxisForDataset(i);
-                renderer.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, 
-                            Layer.FOREGROUND, info);
-            }
-        }
+        drawAnnotations(g2, dataArea, rendererIndices, Layer.FOREGROUND, info);
 
-        // draw domain crosshair if required...
-        int datasetIndex = crosshairState.getDatasetIndex();
-        ValueAxis xAxis = getDomainAxisForDataset(datasetIndex);
-        RectangleEdge xAxisEdge = getDomainAxisEdge(getDomainAxisIndex(xAxis));
-        if (!this.domainCrosshairLockedOnData && anchor != null) {
-            double xx;
-            if (orient == PlotOrientation.VERTICAL) {
-                xx = xAxis.java2DToValue(anchor.getX(), dataArea, xAxisEdge);
-            }
-            else {
-                xx = xAxis.java2DToValue(anchor.getY(), dataArea, xAxisEdge);
-            }
-            crosshairState.setCrosshairX(xx);
-        }
-        setDomainCrosshairValue(crosshairState.getCrosshairX(), false);
-        if (isDomainCrosshairVisible()) {
-            double x = getDomainCrosshairValue();
-            Paint paint = getDomainCrosshairPaint();
-            Stroke stroke = getDomainCrosshairStroke();
-            drawDomainCrosshair(g2, dataArea, orient, x, xAxis, stroke, paint);
-        }
+        // draw crosshair if required...
+        drawCrosshairs(g2, dataArea, crosshairState, anchor);
 
-        // draw range crosshair if required...
-        ValueAxis yAxis = getRangeAxisForDataset(datasetIndex);
-        RectangleEdge yAxisEdge = getRangeAxisEdge(getRangeAxisIndex(yAxis));
-        if (!this.rangeCrosshairLockedOnData && anchor != null) {
-            double yy;
-            if (orient == PlotOrientation.VERTICAL) {
-                yy = yAxis.java2DToValue(anchor.getY(), dataArea, yAxisEdge);
-            } else {
-                yy = yAxis.java2DToValue(anchor.getX(), dataArea, yAxisEdge);
-            }
-            crosshairState.setCrosshairY(yy);
-        }
-        setRangeCrosshairValue(crosshairState.getCrosshairY(), false);
-        if (isRangeCrosshairVisible()) {
-            double y = getRangeCrosshairValue();
-            Paint paint = getRangeCrosshairPaint();
-            Stroke stroke = getRangeCrosshairStroke();
-            drawRangeCrosshair(g2, dataArea, orient, y, yAxis, stroke, paint);
-        }
 
         if (!foundData) {
             drawNoDataMessage(g2, dataArea);
@@ -3458,88 +3527,85 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
      *
      * @return A flag that indicates whether any data was actually rendered.
      */
-    public boolean render(Graphics2D g2, Rectangle2D dataArea, int index,
+    public boolean renderItem(Graphics2D g2, Rectangle2D dataArea, int index,
             PlotRenderingInfo info, CrosshairState crosshairState) {
 
-        boolean foundData = false;
         XYDataset dataset = getDataset(index);
-        if (!DatasetUtils.isEmptyOrNull(dataset)) {
-            foundData = true;
-            ValueAxis xAxis = getDomainAxisForDataset(index);
-            ValueAxis yAxis = getRangeAxisForDataset(index);
-            if (xAxis == null || yAxis == null) {
-                return foundData;  // can't render anything without axes
-            }
-            XYItemRenderer renderer = getRenderer(index);
-            if (renderer == null) {
-                renderer = getRenderer();
-                if (renderer == null) { // no default renderer available
-                    return foundData;
-                }
-            }
+        if (DatasetUtils.isEmptyOrNull(dataset)) {
+            return false;
+        }
+        ValueAxis xAxis = getDomainAxisForDataset(index);
+        ValueAxis yAxis = getRangeAxisForDataset(index);
+        if (xAxis == null || yAxis == null) {
+            return true;  // can't render anything without axes
+        }
 
-            XYItemRendererState state = renderer.initialise(g2, dataArea, this,
-                    dataset, info);
-            int passCount = renderer.getPassCount();
+        XYItemRenderer renderer = getDatasetRenderer(index);
+        if (renderer == null) { // no default renderer available
+            return true;
+        }
 
-            SeriesRenderingOrder seriesOrder = getSeriesRenderingOrder();
-            if (seriesOrder == SeriesRenderingOrder.REVERSE) {
-                //render series in reverse order
-                for (int pass = 0; pass < passCount; pass++) {
-                    int seriesCount = dataset.getSeriesCount();
-                    for (int series = seriesCount - 1; series >= 0; series--) {
-                        int firstItem = 0;
-                        int lastItem = dataset.getItemCount(series) - 1;
-                        if (lastItem == -1) {
-                            continue;
-                        }
-                        if (state.getProcessVisibleItemsOnly()) {
-                            int[] itemBounds = RendererUtils.findLiveItems(
-                                    dataset, series, xAxis.getLowerBound(),
-                                    xAxis.getUpperBound());
-                            firstItem = Math.max(itemBounds[0] - 1, 0);
-                            lastItem = Math.min(itemBounds[1] + 1, lastItem);
-                        }
-                        state.startSeriesPass(dataset, series, firstItem,
-                                lastItem, pass, passCount);
-                        for (int item = firstItem; item <= lastItem; item++) {
-                            renderer.drawItem(g2, state, dataArea, info,
-                                    this, xAxis, yAxis, dataset, series, item,
-                                    crosshairState, pass);
-                        }
-                        state.endSeriesPass(dataset, series, firstItem,
-                                lastItem, pass, passCount);
-                    }
-                }
-            }
-            else {
-                //render series in forward order
-                for (int pass = 0; pass < passCount; pass++) {
-                    int seriesCount = dataset.getSeriesCount();
-                    for (int series = 0; series < seriesCount; series++) {
-                        int firstItem = 0;
-                        int lastItem = dataset.getItemCount(series) - 1;
-                        if (state.getProcessVisibleItemsOnly()) {
-                            int[] itemBounds = RendererUtils.findLiveItems(
-                                    dataset, series, xAxis.getLowerBound(),
-                                    xAxis.getUpperBound());
-                            firstItem = Math.max(itemBounds[0] - 1, 0);
-                            lastItem = Math.min(itemBounds[1] + 1, lastItem);
-                        }
-                        state.startSeriesPass(dataset, series, firstItem,
-                                lastItem, pass, passCount);
-                        for (int item = firstItem; item <= lastItem; item++) {
-                            renderer.drawItem(g2, state, dataArea, info,
-                                    this, xAxis, yAxis, dataset, series, item,
-                                    crosshairState, pass);
-                        }
-                        state.endSeriesPass(dataset, series, firstItem,
-                                lastItem, pass, passCount);
-                    }
+        XYItemRendererState state = renderer.initialise(g2, dataArea, this,
+                dataset, info);
+        int passCount = renderer.getPassCount();
+
+        SeriesRenderingOrder seriesOrder = getSeriesRenderingOrder();
+        if (seriesOrder == SeriesRenderingOrder.REVERSE) {
+            //render series in reverse order
+            for (int pass = 0; pass < passCount; pass++) {
+                int seriesCount = dataset.getSeriesCount();
+                for (int series = seriesCount - 1; series >= 0; series--) {
+                    renderItemByOrder(true, g2, dataArea, info, crosshairState, state, xAxis, yAxis, series,
+                            pass, passCount, renderer, dataset);
                 }
             }
         }
-        return foundData;
+        else {
+            //render series in forward order
+            for (int pass = 0; pass < passCount; pass++) {
+                int seriesCount = dataset.getSeriesCount();
+                for (int series = 0; series < seriesCount; series++) {
+                    renderItemByOrder(false, g2, dataArea, info, crosshairState, state, xAxis, yAxis, series,
+                            pass, passCount, renderer, dataset);
+                }
+            }
+        }
+        return true;
+    }
+
+    private XYItemRenderer getDatasetRenderer (int datasetIndex){
+        XYItemRenderer renderer = getRenderer(datasetIndex);
+        return renderer == null
+                ? getRenderer()
+                : renderer;
+    }
+
+    private boolean renderItemByOrder(boolean isReverseOrder, Graphics2D g2, Rectangle2D dataArea, PlotRenderingInfo info,
+                                  CrosshairState crosshairState, XYItemRendererState state, ValueAxis xAxis,
+                                  ValueAxis yAxis, int series, int pass, int passCount, XYItemRenderer renderer,
+                                  XYDataset dataset){
+        int firstItem = 0;
+        int lastItem = dataset.getItemCount(series) - 1;
+        if (isReverseOrder && lastItem == -1) {
+            return false;
+        }
+        if (state.getProcessVisibleItemsOnly()) {
+            int[] itemBounds = RendererUtils.findLiveItems(
+                    dataset, series, xAxis.getLowerBound(),
+                    xAxis.getUpperBound());
+            firstItem = Math.max(itemBounds[0] - 1, 0);
+            lastItem = Math.min(itemBounds[1] + 1, lastItem);
+        }
+        state.startSeriesPass(dataset, series, firstItem,
+                lastItem, pass, passCount);
+        for (int itemIndex = firstItem; itemIndex <= lastItem; itemIndex++) {
+            renderer.drawItem(g2, state, dataArea, info,
+                    this, xAxis, yAxis, dataset, series, itemIndex,
+                    crosshairState, pass);
+        }
+        state.endSeriesPass(dataset, series, firstItem,
+                lastItem, pass, passCount);
+        return true;
     }
 
     /**
@@ -3755,15 +3821,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (index >= getDatasetCount()) {
             return;
         }
-        Collection markers = getDomainMarkers(index, layer);
-        ValueAxis axis = getDomainAxisForDataset(index);
-        if (markers != null && axis != null) {
-            Iterator iterator = markers.iterator();
-            while (iterator.hasNext()) {
-                Marker marker = (Marker) iterator.next();
-                r.drawDomainMarker(g2, this, axis, marker, dataArea);
-            }
-        }
+        drawMarkers(Domain, g2, dataArea, getRangeMarkers(index, layer), getRangeAxisForDataset(index), r);
 
     }
 
@@ -3776,8 +3834,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
      * @param index  the renderer index.
      * @param layer  the layer (foreground or background).
      */
-    protected void drawRangeMarkers(Graphics2D g2, Rectangle2D dataArea,
-                                    int index, Layer layer) {
+    protected void drawRangeMarkers(Graphics2D g2, Rectangle2D dataArea, int index, Layer layer) {
 
         XYItemRenderer r = getRenderer(index);
         if (r == null) {
@@ -3788,15 +3845,31 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (index >= getDatasetCount()) {
             return;
         }
-        Collection markers = getRangeMarkers(index, layer);
-        ValueAxis axis = getRangeAxisForDataset(index);
+
+        drawMarkers(AxisName.Range, g2, dataArea, getRangeMarkers(index, layer), getRangeAxisForDataset(index), r);
+    }
+
+    /**
+     * Draws the markers (if any) for a renderer and layer.  This method
+     * is typically called from within the draw() method.
+     *
+     * @param axisName the axis name. Between Domain or Range
+     * @param g2  the graphics device.
+     * @param dataArea  the data area.
+     * @param markers  the collection of markers to draw.
+     * @param axis  the axis to draw for.
+     * @param renderer the renderer to use to draw markers
+     */
+    private void drawMarkers (AxisName axisName, Graphics2D g2, Rectangle2D dataArea, Collection markers, ValueAxis axis,
+                              XYItemRenderer renderer) {
         if (markers != null && axis != null) {
             Iterator iterator = markers.iterator();
             while (iterator.hasNext()) {
                 Marker marker = (Marker) iterator.next();
-                r.drawRangeMarker(g2, this, axis, marker, dataArea);
+                renderer.drawMarker(axisName, g2, this, axis, marker, dataArea);
             }
         }
+
     }
 
     /**
@@ -4048,42 +4121,16 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
      * particular axis.
      *
      * @param axisIndex  the axis index ({@code null} not permitted).
+     * @param datasetToAxesMap the map of the dataset and axis
      *
      * @return A list of datasets.
      */
-    private List<XYDataset> getDatasetsMappedToDomainAxis(Integer axisIndex) {
+    private List<XYDataset> getDatasetsMappedToAxis(Integer axisIndex, Map<Integer, List<Integer>> datasetToAxesMap){
         Objects.requireNonNull(axisIndex, "axisIndex");
         List<XYDataset> result = new ArrayList<>();
         for (Entry<Integer, XYDataset> entry : this.datasets.entrySet()) {
             int index = entry.getKey();
-            List<Integer> mappedAxes = this.datasetToDomainAxesMap.get(index);
-            if (mappedAxes == null) {
-                if (axisIndex.equals(ZERO)) {
-                    result.add(entry.getValue());
-                }
-            } else {
-                if (mappedAxes.contains(axisIndex)) {
-                    result.add(entry.getValue());
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * A utility method that returns a list of datasets that are mapped to a
-     * particular axis.
-     *
-     * @param axisIndex  the axis index ({@code null} not permitted).
-     *
-     * @return A list of datasets.
-     */
-    private List<XYDataset> getDatasetsMappedToRangeAxis(Integer axisIndex) {
-        Objects.requireNonNull(axisIndex, "axisIndex");
-        List<XYDataset> result = new ArrayList<>();
-        for (Entry<Integer, XYDataset> entry : this.datasets.entrySet()) {
-            int index = entry.getKey();
-            List<Integer> mappedAxes = this.datasetToRangeAxesMap.get(index);
+            List<Integer> mappedAxes = datasetToAxesMap.get(index);
             if (mappedAxes == null) {
                 if (axisIndex.equals(ZERO)) {
                     result.add(entry.getValue());
@@ -4178,7 +4225,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         int domainIndex = getDomainAxisIndex(axis);
         if (domainIndex >= 0) {
             isDomainAxis = true;
-            mappedDatasets.addAll(getDatasetsMappedToDomainAxis(domainIndex));
+            mappedDatasets.addAll(getDatasetsMappedToAxis(domainIndex, this.datasetToDomainAxesMap));
             if (domainIndex == 0) {
                 // grab the plot's annotations
                 for (XYAnnotation annotation : this.annotations) {
@@ -4193,7 +4240,7 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         int rangeIndex = getRangeAxisIndex(axis);
         if (rangeIndex >= 0) {
             isDomainAxis = false;
-            mappedDatasets.addAll(getDatasetsMappedToRangeAxis(rangeIndex));
+            mappedDatasets.addAll(getDatasetsMappedToAxis(rangeIndex,this.datasetToRangeAxesMap));
             if (rangeIndex == 0) {
                 for (XYAnnotation annotation : this.annotations) {
                     if (annotation instanceof XYAnnotationBoundsInfo) {

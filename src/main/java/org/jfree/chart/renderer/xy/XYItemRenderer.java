@@ -1375,4 +1375,17 @@ public interface XYItemRenderer extends LegendItemSource {
     public void drawRangeMarker(Graphics2D g2, XYPlot plot, ValueAxis axis,
             Marker marker, Rectangle2D dataArea);
 
+    /**
+     * Draws the specified {@code marker} against the axis given.
+     *
+     * @param axisName the axis to draw for
+     * @param g2  the graphics device.
+     * @param plot  the plot.
+     * @param axis  the value axis.
+     * @param marker  the marker.
+     * @param dataArea  the axis data area.
+     */
+    public void drawMarker(AxisName axisName, Graphics2D g2, XYPlot plot, ValueAxis axis,
+                                 Marker marker, Rectangle2D dataArea);
+
 }
