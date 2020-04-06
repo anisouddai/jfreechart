@@ -3013,6 +3013,31 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         }
     }
 
+    private CrosshairState getCrosshairStateSetted(Rectangle2D dataArea, Point2D anchor){
+        PlotOrientation orient = getOrientation();
+        CrosshairState crosshairState = new CrosshairState(Double.POSITIVE_INFINITY, anchor);
+
+        crosshairState.setAnchorX(Double.NaN);
+        crosshairState.setAnchorY(Double.NaN);
+        if (anchor != null) {
+            ValueAxis domainAxis = getDomainAxis();
+            if (domainAxis != null) {
+                crosshairState.setAnchorX(getAnchorByAxisNameByPlotOrientation(Domain, anchor));
+            }
+            ValueAxis rangeAxis = getRangeAxis();
+            if (rangeAxis != null) {
+                crosshairState.setAnchorY((getAnchorByAxisNameByPlotOrientation(AxisName.Range, anchor)));
+            }
+        }
+        crosshairState.setCrosshairX(getDomainCrosshairValue());
+        crosshairState.setCrosshairY(getRangeCrosshairValue());
+        return crosshairState;
+    }
+
+    private void drawAxisLines(){
+
+    }
+
     /**
      * Draws the plot within the specified area on a graphics device.
      *
@@ -3065,42 +3090,9 @@ public class XYPlot extends Plot implements ValueAxisPlot, Pannable, Zoomable,
         if (anchor != null && !dataArea.contains(anchor)) {
             anchor = null;
         }
-        CrosshairState crosshairState = new CrosshairState();
-        crosshairState.setCrosshairDistance(Double.POSITIVE_INFINITY);
-        crosshairState.setAnchor(anchor);
 
-        crosshairState.setAnchorX(Double.NaN);
-        crosshairState.setAnchorY(Double.NaN);
-        if (anchor != null) {
-            ValueAxis domainAxis = getDomainAxis();
-            if (domainAxis != null) {
-                double x;
-                if (orient == PlotOrientation.VERTICAL) {
-                    x = domainAxis.java2DToValue(anchor.getX(), dataArea,
-                            getDomainAxisEdge());
-                }
-                else {
-                    x = domainAxis.java2DToValue(anchor.getY(), dataArea,
-                            getDomainAxisEdge());
-                }
-                crosshairState.setAnchorX(x);
-            }
-            ValueAxis rangeAxis = getRangeAxis();
-            if (rangeAxis != null) {
-                double y;
-                if (orient == PlotOrientation.VERTICAL) {
-                    y = rangeAxis.java2DToValue(anchor.getY(), dataArea,
-                            getRangeAxisEdge());
-                }
-                else {
-                    y = rangeAxis.java2DToValue(anchor.getX(), dataArea,
-                            getRangeAxisEdge());
-                }
-                crosshairState.setAnchorY(y);
-            }
-        }
-        crosshairState.setCrosshairX(getDomainCrosshairValue());
-        crosshairState.setCrosshairY(getRangeCrosshairValue());
+        CrosshairState crosshairState = getCrosshairStateSetted(dataArea, anchor);
+
         Shape originalClip = g2.getClip();
         Composite originalComposite = g2.getComposite();
 
